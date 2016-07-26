@@ -1,0 +1,14 @@
+name = OSHA gallery
+core = 7.x
+package = OSHA
+dependencies[] = colorbox
+dependencies[] = field_formatter_settings
+dependencies[] = galleryformatter
+dependencies[] = image
+dependencies[] = manualcrop
+dependencies[] = plupload
+dependencies[] = entity
+configure = admin/config/content/osha_gallery
+features[features_api][] = api:2
+features[image][] = gallery_cover_image
+features[image][] = gallery_thumbnail
