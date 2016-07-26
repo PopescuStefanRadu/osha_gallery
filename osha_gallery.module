@@ -170,6 +170,9 @@ function osha_gallery_get_usable_bundle_fields()
     return $fields;
 }
 
+
+
+// @TODO imi crapa uploadul de imagini pls stahp
 /**
  * Implements hook_form_alter().
  */
