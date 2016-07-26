@@ -92,16 +92,12 @@ function osha_gallery_node_view($node, $view_mode, $langcode)
         $gallery_field = current(array_keys($fields[$node->type]));
         $extra_fields = field_info_extra_fields('node', $node->type, 'display');
         $extra_field_pc = $extra_fields['gallery_cover_image'];
-        dpm($extra_field_pc['display']);
         if (!empty($extra_field_pc['display'][$view_mode]['visible']) && !empty($node->{$gallery_field})) {
             $wrapper = entity_metadata_wrapper('node', $node);
             $first_image = $wrapper->{$gallery_field}->value()[0];
             if (!empty($first_image)) {
-                // TODO Create a formatter for field to select an image style.
-
-
                 $image_vars = array(
-                    'style_name' => 'thumbnail',
+                    'style_name' => $extra_field_pc['display']['default']['settings']['image_style'],
                     'path' => $first_image['uri'],
                     'alt' => $node->title,
                 );
@@ -186,7 +182,7 @@ function osha_gallery_form_alter(&$form, &$form_state, $form_id)
         if (array_key_exists($node->type, $fields)) {
             foreach ($fields[$node->type] as $field_name => $label) {
                 if (!empty($form[$field_name])) {
-                    $form[$field_name]['#access']= FALSE;
+                    $form[$field_name]['#access'] = FALSE;
                     $alter = TRUE;
                 }
             }
@@ -513,8 +509,9 @@ function _osha_gallery_get_display_settings_field($file, $field_instance, $node)
  */
 function osha_gallery_form_field_ui_display_overview_form_alter(&$form, &$form_state)
 {
-
-
+    $field_name = "gallery_cover_image";
+    if(!isset($form['fields'][$field_name]))
+        return;
     // Retrieve fivestar widgets
     $widgets = module_invoke_all('fivestar_widgets');
 
@@ -525,7 +522,6 @@ function osha_gallery_form_field_ui_display_overview_form_alter(&$form, &$form_s
     $settings = field_bundle_settings($form['#entity_type'], $form['#bundle']);
     // Retrieve current view-mode
     $view_mode = $form['#view_mode'];
-    $field_name = "gallery_cover_image";
 
 
     // Get current format (hidden or visible, to
@@ -543,12 +539,22 @@ function osha_gallery_form_field_ui_display_overview_form_alter(&$form, &$form_s
     if ($format_type == 'visible') {
         $image_styles = image_style_options(FALSE, PASS_THROUGH);
         $sent_instance = [];
-        $sent_instance['display'][$view_mode]['settings'] = $settings['extra_fields']['display'][$field_name][$view_mode]['settings'];
+        if (isset($settings['extra_fields']['display'][$field_name][$view_mode]['settings'])) {
 
+            $sent_instance['display'][$view_mode]['settings'] = $settings['extra_fields']['display'][$field_name][$view_mode]['settings'];
+        } else {
+            $sent_instance['display'][$view_mode]['settings'] = ['image_style' => 'original'];
+        }
         // junk data because function wants ref to variable
         $sent_form_status = [];
 
+        // Error avoiding
+        $sent_instance['display'][$view_mode]['settings']['image_link'] = 'none';
+
         $form['fields'][$field_name]['settings_edit'] = image_field_formatter_settings_form('', $sent_instance, $view_mode, null, $sent_form_status);
+
+        // We don't want image link setting
+        unset($form['fields'][$field_name]['settings_edit']['image_link']);
 
         $form['fields'][$field_name]['settings_summary']['#markup'] = image_field_formatter_settings_summary('', $sent_instance, $view_mode);
 
@@ -570,7 +576,6 @@ function osha_gallery_form_field_ui_display_overview_form_submit($form, &$form_s
     // Get current settings and view-mode
     $settings = field_bundle_settings($form['#entity_type'], $form['#bundle']);
     $view_mode = $form['#view_mode'];
-
     $field_name = 'gallery_cover_image';
     // current form values
 
@@ -584,6 +589,22 @@ function osha_gallery_form_field_ui_display_overview_form_submit($form, &$form_s
     // Add current form values into the "settings" key
     // of the current managed field
     $settings['extra_fields']['display'][$field_name][$view_mode]['settings'] = $osha_gallery_settings;
+
+
+    // If default view, update views which aren't custom
+
+    if ($view_mode == 'default') {
+        $entity_info = entity_get_info($form['#entity_type']);
+        $view_modes = $entity_info['view modes'];
+        $view_mode_settings = field_view_mode_settings($form['#entity_type'], $form['#bundle']);
+
+        foreach ($view_modes as $view_mode_name => $view_mode_info) {
+            if (empty($view_mode_settings[$view_mode_name]['custom_settings'])) {
+                $settings['extra_fields']['display'][$field_name][$view_mode_name]['settings'] = $osha_gallery_settings;
+            }
+        }
+    }
+
 
     // Finally, recall field_bundle_settings
     // with settings as last param to save it
