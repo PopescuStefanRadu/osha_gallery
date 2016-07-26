@@ -502,3 +502,175 @@ function _osha_gallery_get_display_settings_field($file, $field_instance, $node)
     }
     return $html;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * Implements hook_form_FORM_ID_alter
+ * to alter the content-type display form
+ */
+function osha_gallery_form_field_ui_display_overview_form_alter(&$form, &$form_state) {
+
+    $extra = osha_gallery_field_extra_fields();
+
+    // If the fields are not supported for the entity type and bundle
+    // we're loading the form for then return early.
+    if (!isset($extra[$form['#entity_type']], $extra[$form['#entity_type']][$form['#bundle']])) {
+        return;
+    }
+
+    // Filter extra fields by those the field ui module is chosing to show in the form.
+    $extra_fields = array_keys($extra[$form['#entity_type']][$form['#bundle']]['display']);
+    $extra_fields = array_intersect($extra_fields, $form['#extra']);
+
+    if (empty($extra_fields)) {
+        return;
+    }
+
+    // Retrieve fivestar widgets
+    $widgets = module_invoke_all('fivestar_widgets');
+
+    // Get current settings for this entity/bundle
+    // (@see form_submit : I store additional settings
+    // into this variable to avoid create another variable
+    // in variable table)
+    $settings = field_bundle_settings($form['#entity_type'], $form['#bundle']);
+
+    // Retrieve current view-mode
+    $view_mode = $form['#view_mode'];
+
+    foreach ($extra_fields as $field_name) {
+
+        // Get my own settings from "settings" key
+        $wfivestar_settings = isset($settings['extra_fields']['display'][$field_name],
+            $settings['extra_fields']['display'][$field_name][$view_mode],
+            $settings['extra_fields']['display'][$field_name][$view_mode]['settings'])
+            ? $settings['extra_fields']['display'][$field_name][$view_mode]['settings']
+            : array();
+
+        // Get current format (hidden or visible, to
+        // show settings form when needed only)
+        $format_type = isset($form_state['values'],
+            $form_state['values']['fields'],
+            $form_state['values']['fields'][$field_name],
+            $form_state['values']['fields'][$field_name]['type'])
+            ? $form_state['values']['fields'][$field_name]['type']
+            : $form['fields'][$field_name]['format']['type']['#default_value'];
+
+        // Build the settings form. Here, the "settings_edit"
+        // is the crucial key to use. You must start with
+        // it and build other settings fields into.
+        if ($format_type == 'visible') {
+            $form['fields'][$field_name]['settings_edit'] = array(
+                '#type' => 'fieldset',
+                '#collapsible' => TRUE,
+                '#collapsed' => TRUE,
+                '#title' => t('Fivestar settings'),
+                //'#attributes' => array('class' => array('field-formatter-settings-edit-form')),
+                //'#parents' => array('fields', $field_name, 'settings_form'),
+
+                'style' => array(
+                    '#type' => 'select',
+                    '#title' => t('Value to display as stars'),
+                    '#options' => array(
+                        'average' => t('Average vote'),
+                        'user'    => t("User's vote"),
+                        'smart'   => t("User's vote if available, average otherwise"),
+                        'dual'    => t("Both user's and average vote"),
+                    ),
+                    '#default_value' => isset($wfivestar_settings['style'])
+                        ? $wfivestar_settings['style']
+                        : 'average',
+                ),
+                'text' => array(
+                    '#type' => 'select',
+                    '#title' => t('Text to display under the stars'),
+                    '#options' => array(
+                        'none'    => t('No text'),
+                        'average' => t('Average vote'),
+                        'user'    => t("User's vote"),
+                        'smart'   => t("User's vote if available, average otherwise"),
+                        'dual'    => t("Both user's and average vote"),
+                    ),
+                    '#default_value' => isset($wfivestar_settings['text'])
+                        ? $wfivestar_settings['text']
+                        : 'none',
+                ),
+                'widget' => array(
+                    '#tree' => TRUE,
+                    '#type' => 'fieldset',
+                    '#title' => t('Star display options'),
+                    '#description' => t('Choose a style for your widget.'),
+                    '#collapsible' => TRUE,
+                    '#collapsed' => TRUE,
+                    'fivestar_widget' => array(
+                        '#type' => 'radios',
+                        '#options' => array('default' => t('Default')) + $widgets,
+                        '#default_value' => isset($wfivestar_settings['widget'], $wfivestar_settings['widget']['fivestar_widget'])
+                            ? $wfivestar_settings['widget']['fivestar_widget']
+                            : 'default',
+                        '#attributes' => array('class' => array('fivestar-widgets', 'clearfix')),
+                        '#pre_render' => array('fivestar_previews_expand'),
+                        '#attached' => array('css' => array(drupal_get_path('module', 'fivestar') . '/css/fivestar-admin.css')),
+                    ),
+                ),
+            );
+            $form['fields'][$field_name]['settings_summary']['#markup'] = 'This is the settings summary.';
+        }
+    }
+    // Don't forget to add a submit handler if you need to process/save
+    // configuration for your fields.
+    $form['#submit'][] = 'wfivestar_form_field_ui_display_overview_form_submit';
+}
+
+/**
+ * Custom submit callback to store
+ * settings
+ */
+function wfivestar_form_field_ui_display_overview_form_submit($form, &$form_state) {
+
+    // Get current module extra fields
+    $extra = wfivestar_field_extra_fields();
+    // Filter extra fields by those the field ui module is chosing to show in the form.
+    $extra_fields = array_keys($extra[$form['#entity_type']][$form['#bundle']]['display']);
+    $extra_fields = array_intersect($extra_fields, $form['#extra']);
+
+    // Get current settings and view-mode
+    $settings = field_bundle_settings($form['#entity_type'], $form['#bundle']);
+    $view_mode = $form['#view_mode'];
+
+    // Iterate on each extra fields and get
+    // current form values
+    foreach ($extra_fields as $field_name) {
+
+        $wfivestar_settings = isset($form_state['values'],
+            $form_state['values']['fields'],
+            $form_state['values']['fields'][$field_name],
+            $form_state['values']['fields'][$field_name]['settings_edit'])
+            ? $form_state['values']['fields'][$field_name]['settings_edit']
+            : array();
+
+        // Add current form values into the "settings" key
+        // of the current managed field
+        $settings['extra_fields']['display'][$field_name][$view_mode]['settings'] = $wfivestar_settings;
+    }
+
+    // Finally, recall field_bundle_settings
+    // with settings as last param to save it
+    // into the database.
+    $settings = field_bundle_settings($form['#entity_type'], $form['#bundle'], $settings);
+}
