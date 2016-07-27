@@ -9,313 +9,302 @@ include_once 'osha_gallery.features.inc';
 /**
  * Implements hook_menu().
  */
-function osha_gallery_menu()
-{
-    $items = array();
-    $items['node/%node/bulk_upload'] = array(
-        'title' => 'Bulk Upload',
-        'description' => 'Provides a form to bulk upload images to node field_images',
-        'page callback' => 'drupal_get_form',
-        'page arguments' => array('osha_gallery_bulk_upload_form', 1),
-        'type' => MENU_LOCAL_TASK,
-        'access callback' => 'osha_gallery_bulk_upload_access_callback',
-        'access arguments' => array(1),
-    );
-    $items['node/%node/reorder_files'] = array(
-        'title' => 'Reorder images',
-        'description' => 'Provides an interface for reordering files',
-        'page callback' => 'drupal_get_form',
-        'page arguments' => array('osha_gallery_reorder_files_form', 1),
-        'type' => MENU_LOCAL_TASK,
-        'access callback' => 'osha_gallery_bulk_upload_access_callback',
-        'access arguments' => array(1),
-    );
-    $items['admin/config/content/osha_gallery'] = array(
-        'title' => 'OSHA Gallery Configuration',
-        'description' => 'Configure parameters for the OSHA gallery',
-        'page callback' => 'drupal_get_form',
-        'page arguments' => array('osha_gallery_config_form'),
-        'access arguments' => array('administer site configuration'),
-        'type' => MENU_NORMAL_ITEM,
-    );
-    return $items;
+function osha_gallery_menu() {
+  $items = array();
+  $items['node/%node/bulk_upload'] = array(
+    'title' => 'Bulk Upload',
+    'description' => 'Provides a form to bulk upload images to node field_images',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('osha_gallery_bulk_upload_form', 1),
+    'type' => MENU_LOCAL_TASK,
+    'access callback' => 'osha_gallery_bulk_upload_access_callback',
+    'access arguments' => array(1),
+  );
+  $items['node/%node/reorder_files'] = array(
+    'title' => 'Reorder images',
+    'description' => 'Provides an interface for reordering files',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('osha_gallery_reorder_files_form', 1),
+    'type' => MENU_LOCAL_TASK,
+    'access callback' => 'osha_gallery_bulk_upload_access_callback',
+    'access arguments' => array(1),
+  );
+  $items['admin/config/content/osha_gallery'] = array(
+    'title' => 'OSHA Gallery Configuration',
+    'description' => 'Configure parameters for the OSHA gallery',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('osha_gallery_config_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
 }
 
 /**
  * Implements hook_permission().
  */
-function osha_gallery_permission()
-{
-    return array(
-        'use hwc gallery bulk upload' => array(
-            'title' => t('Use gallery bulk upload tab'),
-            'description' => t('Can access bulk upload screen on nodes'),
-        ),
-    );
+function osha_gallery_permission() {
+  return array(
+    'use hwc gallery bulk upload' => array(
+      'title' => t('Use gallery bulk upload tab'),
+      'description' => t('Can access bulk upload screen on nodes'),
+    ),
+  );
 }
 
 
 /**
  * Implements hook_field_extra_fields().
  */
-function osha_gallery_field_extra_fields()
-{
-    $extra = array();
-    $fields = osha_gallery_get_usable_bundle_fields();
-    if (!empty($fields)) {
-        $gallery_cover_image = array(
-            'display' => array(
-                'gallery_cover_image' => array(
-                    'label' => t('Gallery cover image'),
-                    'description' => t('Shows the first image of the field as cover image.'),
-                    'extra field type' => 'gallery_cover_image',
-                    'weight' => 0,
-                ),
-            ),
-        );
+function osha_gallery_field_extra_fields() {
+  $extra = array();
+  $fields = osha_gallery_get_usable_bundle_fields();
+  if (!empty($fields)) {
+    $gallery_cover_image = array(
+      'display' => array(
+        'gallery_cover_image' => array(
+          'label' => t('Gallery cover image'),
+          'description' => t('Shows the first image of the field as cover image.'),
+          'extra field type' => 'gallery_cover_image',
+          'weight' => 0,
+        ),
+      ),
+    );
 
-        foreach ($fields as $type => $field) {
-            $extra['node'][$type] = $gallery_cover_image;
-        }
+    foreach ($fields as $type => $field) {
+      $extra['node'][$type] = $gallery_cover_image;
     }
-    return $extra;
+  }
+  return $extra;
 }
 
 
 /**
  * Implements hook_node_view().
  */
-function osha_gallery_node_view($node, $view_mode, $langcode)
-{
-    $fields = osha_gallery_get_usable_bundle_fields();
-    if (array_key_exists($node->type, $fields)) {
-        $gallery_field = current(array_keys($fields[$node->type]));
-        $extra_fields = field_info_extra_fields('node', $node->type, 'display');
-        $extra_field_pc = $extra_fields['gallery_cover_image'];
-        if (!empty($extra_field_pc['display'][$view_mode]['visible']) && !empty($node->{$gallery_field})) {
-            $wrapper = entity_metadata_wrapper('node', $node);
-            $first_image = $wrapper->{$gallery_field}->value()[0];
+function osha_gallery_node_view($node, $view_mode, $langcode) {
+  $fields = osha_gallery_get_usable_bundle_fields();
+  if (array_key_exists($node->type, $fields)) {
+    $gallery_field = current(array_keys($fields[$node->type]));
+    $extra_fields = field_info_extra_fields('node', $node->type, 'display');
+    $extra_field_pc = $extra_fields['gallery_cover_image'];
+    if (!empty($extra_field_pc['display'][$view_mode]['visible']) && !empty($node->{$gallery_field})) {
+      $wrapper = entity_metadata_wrapper('node', $node);
+      $first_image = $wrapper->{$gallery_field}->value()[0];
 
-            if (!empty($first_image)) {
-                $image_vars = array(
-                    'style_name' => $extra_field_pc['display']['default']['settings']['image_style'],
-                    'path' => $first_image['uri'],
-                    'alt' => $node->title,
-                );
+      if (!empty($first_image)) {
+        $image_vars = array(
+          'style_name' => $extra_field_pc['display']['default']['settings']['image_style'],
+          'path' => $first_image['uri'],
+          'alt' => $node->title,
+        );
 
-                $field_selector = '.field-name-' . str_replace('_', '-', $gallery_field);
-                // Cover image will open first image of gallery.
-                $link = '<a href="javascript:void(0);" onclick="jQuery(\'' . $field_selector . ' a \').eq(0).trigger(\'click\')">' . theme('image_style', $image_vars) . '</a>';
-                $node->content['gallery_cover_image'] = array('#markup' => $link);
-                if (!empty($node->content[$gallery_field])) {
-                    $image_deltas = element_children($node->content[$gallery_field]);
-                    $total = count($image_deltas);
-                    $per_page = 6;
-                    if ($total > $per_page) {
-                        $page = pager_default_initialize($total, $per_page);
-                        if ($page > 0) {
-                            if (!empty($node->content['body'])) {
-                                hide($node->content['body']);
-                            }
-                            hide($node->content['gallery_cover_image']);
-                        }
-                        $offset = $per_page * $page;
-                        $showing_deltas = range($offset, $offset + $per_page - 1);
-                        $remove_deltas = array_diff($image_deltas, $showing_deltas);
-                        foreach ($remove_deltas as $delta) {
-                            unset($node->content[$gallery_field][$delta]);
-                        }
-                        $node->content[$gallery_field]['#suffix'] = theme('pager');
-                    }
-                }
+        $field_selector = '.field-name-' . str_replace('_', '-', $gallery_field);
+        // Cover image will open first image of gallery.
+        $link = '<a href="javascript:void(0);" onclick="jQuery(\'' . $field_selector . ' a\').trigger(\'click\');">' . theme('image_style', $image_vars) . '</a>';
+        $node->content['gallery_cover_image'] = array('#markup' => $link);
+        if (!empty($node->content[$gallery_field])) {
+          $image_deltas = element_children($node->content[$gallery_field]);
+          $total = count($image_deltas);
+          $per_page = 6;
+          if ($total > $per_page) {
+            $page = pager_default_initialize($total, $per_page);
+            if ($page > 0) {
+              if (!empty($node->content['body'])) {
+                hide($node->content['body']);
+              }
+              hide($node->content['gallery_cover_image']);
             }
+            $offset = $per_page * $page;
+            $showing_deltas = range($offset, $offset + $per_page - 1);
+            $remove_deltas = array_diff($image_deltas, $showing_deltas);
+            foreach ($remove_deltas as $delta) {
+              unset($node->content[$gallery_field][$delta]);
+            }
+            $node->content[$gallery_field]['#suffix'] = theme('pager');
+          }
         }
+      }
     }
+  }
 }
 
-function osha_gallery_config_form($form, &$form_state)
-{
-    $form = array();
-    $fields = field_info_fields();
-    $options = array();
-    foreach ($fields as $field_name => $field_instance) {
-        $multiple_images = $field_instance['type'] == 'image' && $field_instance['cardinality'] == -1;
-        // TODO: implement for videos.
-        if ($multiple_images) {
-            foreach ($field_instance['bundles']['node'] as $bundle) {
-                $options[$bundle . '|' . $field_name] = $bundle . '-' . $field_name;
-            }
-        }
+function osha_gallery_config_form($form, &$form_state) {
+  $form = array();
+  $fields = field_info_fields();
+  $options = array();
+  foreach ($fields as $field_name => $field_instance) {
+    $multiple_images = $field_instance['type'] == 'image' && $field_instance['cardinality'] == -1;
+    // TODO: implement for videos.
+    if ($multiple_images) {
+      foreach ($field_instance['bundles']['node'] as $bundle) {
+        $options[$bundle . '|' . $field_name] = $bundle . '-' . $field_name;
+      }
     }
+  }
 
-    $form['osha_gallery_usable_fields_bundles'] = array(
-        '#title' => 'Usable fields',
-        '#type' => 'select',
-        '#options' => $options,
-        '#multiple' => TRUE,
-        '#default_value' => variable_get('osha_gallery_usable_fields_bundles', array()),
-    );
+  $form['osha_gallery_usable_fields_bundles'] = array(
+    '#title' => 'Usable fields',
+    '#type' => 'select',
+    '#options' => $options,
+    '#multiple' => TRUE,
+    '#default_value' => variable_get('osha_gallery_usable_fields_bundles', array()),
+  );
 
-    return system_settings_form($form);
+  return system_settings_form($form);
 }
 
-function osha_gallery_get_usable_bundle_fields()
-{
-    $options = variable_get('osha_gallery_usable_fields_bundles', array());
-    $fields = array();
-    foreach ($options as $option) {
-        list($bundle, $field) = explode('|', $option);
-        $info = field_info_instance('node', $field, $bundle);
-        $fields[$bundle][$field] = $info['label'];
-    }
-    return $fields;
+function osha_gallery_get_usable_bundle_fields() {
+  $options = variable_get('osha_gallery_usable_fields_bundles', array());
+  $fields = array();
+  foreach ($options as $option) {
+    list($bundle, $field) = explode('|', $option);
+    $info = field_info_instance('node', $field, $bundle);
+    $fields[$bundle][$field] = $info['label'];
+  }
+  return $fields;
 }
 
 /**
  * Implements hook_form_alter().
  */
-function osha_gallery_form_alter(&$form, &$form_state, $form_id)
-{
-    if (isset($form['#node_edit_form']) && empty($form_state['node']->nid)) {
-        // Create node form
-        $node = $form_state['node'];
-        $fields = osha_gallery_get_usable_bundle_fields();
-        $alter = FALSE;
-        if (array_key_exists($node->type, $fields)) {
-            foreach ($fields[$node->type] as $field_name => $label) {
-                if (!empty($form[$field_name])) {
-                    $form[$field_name]['#access'] = FALSE;
-                    $alter = TRUE;
-                }
-            }
+function osha_gallery_form_alter(&$form, &$form_state, $form_id) {
+  if (isset($form['#node_edit_form']) && empty($form_state['node']->nid)) {
+    // Create node form
+    $node = $form_state['node'];
+    $fields = osha_gallery_get_usable_bundle_fields();
+    $alter = FALSE;
+    if (array_key_exists($node->type, $fields)) {
+      foreach ($fields[$node->type] as $field_name => $label) {
+        if (!empty($form[$field_name])) {
+          $form[$field_name]['#access'] = FALSE;
+          $alter = TRUE;
         }
-        if ($alter) {
-            $form['actions']['submit']['#submit'][] = 'osha_gallery_node_form_submit_callback';
-        }
+      }
     }
+    if ($alter) {
+      $form['actions']['submit']['#submit'][] = 'osha_gallery_node_form_submit_callback';
+    }
+  }
 
 }
 
 /**
  * Callback after gallery create to redirect to bulk upload.
  */
-function osha_gallery_node_form_submit_callback($form, &$form_state)
-{
-    $node = $form_state['node'];
-    $form_state['redirect'] = 'node/' . $node->nid . '/bulk_upload';
+function osha_gallery_node_form_submit_callback($form, &$form_state) {
+  $node = $form_state['node'];
+  $form_state['redirect'] = 'node/' . $node->nid . '/bulk_upload';
 }
 
-function osha_gallery_bulk_upload_access_callback($node)
-{
-    $fields = osha_gallery_get_usable_bundle_fields();
-    if (array_key_exists($node->type, $fields) && user_access('use hwc gallery bulk upload')) {
-        return TRUE;
-    }
-    return FALSE;
+function osha_gallery_bulk_upload_access_callback($node) {
+  $fields = osha_gallery_get_usable_bundle_fields();
+  if (array_key_exists($node->type, $fields) && user_access('use hwc gallery bulk upload')) {
+    return TRUE;
+  }
+  return FALSE;
 }
 
 /**
  * Bulk upload form - callback for menu "Bulk Upload".
  */
-function osha_gallery_bulk_upload_form($form, &$form_state, $node)
-{
-    $form = array();
-    $form['#node'] = $node;
-    $form['description'] = array(
-        '#type' => 'item',
-        '#markup' => t('You can upload multiple images to this gallery.')
-    );
-    $usable_fields = osha_gallery_get_usable_bundle_fields();
-    $form['to_field'] = array(
-        '#title' => 'Upload files to field',
-        '#type' => 'select',
-        '#options' => $usable_fields[$node->type],
-    );
-    if (count($usable_fields[$node->type]) <= 1) {
-        $form['to_field']['#type'] = 'hidden';
-        $form['to_field']['#value'] = current(array_keys($form['to_field']['#options']));
-    }
-    $form['field_files'] = array(
-        '#type' => 'plupload',
-        '#title' => t('Upload files'),
-        '#autoupload' => TRUE,
-        '#upload_validators' => array(
-            'file_validate_extensions' => array('jpg jpeg gif png'),
-        ),
-        '#plupload_settings' => array(
-            'runtimes' => 'html5',
-            'chunk_size' => '1mb',
-        ),
-    );
-    $form['overwrite'] = array(
-        '#title' => t('Replace existing files'),
-        '#type' => 'checkbox',
-        '#default_value' => FALSE,
-    );
-    $form['submit'] = array(
-        '#type' => 'submit',
-        '#value' => 'Save',
-    );
+function osha_gallery_bulk_upload_form($form, &$form_state, $node) {
+  $form = array();
+  $form['#node'] = $node;
+  $form['description'] = array(
+    '#type' => 'item',
+    '#markup' => t('You can upload multiple images to this gallery.')
+  );
+  $usable_fields = osha_gallery_get_usable_bundle_fields();
+  $form['to_field'] = array(
+    '#title' => 'Upload files to field',
+    '#type' => 'select',
+    '#options' => $usable_fields[$node->type],
+  );
+  if (count($usable_fields[$node->type]) <= 1) {
+    $form['to_field']['#type'] = 'hidden';
+    $form['to_field']['#value'] = current(array_keys($form['to_field']['#options']));
+  }
+  $form['field_files'] = array(
+    '#type' => 'plupload',
+    '#title' => t('Upload files'),
+    '#autoupload' => TRUE,
+    '#upload_validators' => array(
+      'file_validate_extensions' => array('jpg jpeg gif png'),
+    ),
+    '#plupload_settings' => array(
+      'runtimes' => 'html5',
+      'chunk_size' => '1mb',
+    ),
+  );
+  $form['overwrite'] = array(
+    '#title' => t('Replace existing files'),
+    '#type' => 'checkbox',
+    '#default_value' => FALSE,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Save',
+  );
 
-    return $form;
+  return $form;
 }
 
 /**
  * Validation callback.
  */
-function osha_gallery_bulk_upload_form_validate($form, &$form_state)
-{
-    $node = $form['#node'];
-    $gallery_field_name = $form_state['values']['to_field'];
-    if (!isset($node->{$gallery_field_name})) {
-        form_set_error('to_field', 'The selected field is not available for this node.');
-    }
+function osha_gallery_bulk_upload_form_validate($form, &$form_state) {
+  $node = $form['#node'];
+  $gallery_field_name = $form_state['values']['to_field'];
+  if (!isset($node->{$gallery_field_name})) {
+    form_set_error('to_field', 'The selected field is not available for this node.');
+  }
 }
 
 /**
  * Submit callback for bulk upload.
  */
-function osha_gallery_bulk_upload_form_submit($form, &$form_state)
-{
-    $node = $form['#node'];
-    $saved_files = array();
-    $failed_files = array();
-    $gallery_field_name = $form_state['values']['to_field'];
-    if (!empty($form_state['values']['field_files'])) {
-        foreach ($form_state['values']['field_files'] as $uploaded_file) {
-            $destination = 'public://osha_gallery/node_' . $node->nid;
-            if ($uploaded_file['status'] == 'done') {
-                $source = $uploaded_file['tmppath'];
-                file_prepare_directory($destination, FILE_CREATE_DIRECTORY);
-                $destination = file_stream_wrapper_uri_normalize($destination . '/' . $uploaded_file['name']);
-                $destination = file_unmanaged_move($source, $destination, FILE_EXISTS_RENAME);
-                if (empty($destination)) {
-                    $failed_files[] = $uploaded_file['name'];
-                    continue;
-                }
-                $file = plupload_file_uri_to_object($destination);
-                file_save($file);
-                $file->display = 1;
-                $file->description = '';
-                $saved_files[] = (array)$file;
-            }
+function osha_gallery_bulk_upload_form_submit($form, &$form_state) {
+  $node = $form['#node'];
+  $saved_files = array();
+  $failed_files = array();
+  $gallery_field_name = $form_state['values']['to_field'];
+  if (!empty($form_state['values']['field_files'])) {
+    foreach ($form_state['values']['field_files'] as $uploaded_file) {
+      $destination = 'public://osha_gallery/node_' . $node->nid;
+      if ($uploaded_file['status'] == 'done') {
+        $source = $uploaded_file['tmppath'];
+        file_prepare_directory($destination, FILE_CREATE_DIRECTORY);
+        $destination = file_stream_wrapper_uri_normalize($destination . '/' . $uploaded_file['name']);
+        $destination = file_unmanaged_move($source, $destination, FILE_EXISTS_RENAME);
+        if (empty($destination)) {
+          $failed_files[] = $uploaded_file['name'];
+          continue;
         }
+        $file = plupload_file_uri_to_object($destination);
+        file_save($file);
+        $file->display = 1;
+        $file->description = '';
+        $saved_files[] = (array) $file;
+      }
     }
-    if (!empty($failed_files)) {
-        drupal_set_message(t('The file @file could not be saved due to internal error. Please contact site administrator.', array('@file' => implode(', ', $failed_files))), 'warning');
-    }
+  }
+  if (!empty($failed_files)) {
+    drupal_set_message(t('The file @file could not be saved due to internal error. Please contact site administrator.', array('@file' => implode(', ', $failed_files))), 'warning');
+  }
 
-    $wrapper = entity_metadata_wrapper('node', $node);
+  $wrapper = entity_metadata_wrapper('node', $node);
 
-    if (!empty($form_state['values']['overwrite'])) {
-        $wrapper->{$gallery_field_name}->set($saved_files);
-    } else {
-        foreach ($saved_files as $file) {
-            $wrapper->{$gallery_field_name}[] = $file;
-        }
+  if (!empty($form_state['values']['overwrite'])) {
+    $wrapper->{$gallery_field_name}->set($saved_files);
+  }
+  else {
+    foreach ($saved_files as $file) {
+      $wrapper->{$gallery_field_name}[] = $file;
     }
-    $wrapper->save();
-    $form_state['redirect'] = 'node/' . $node->nid;
+  }
+  $wrapper->save();
+  $form_state['redirect'] = 'node/' . $node->nid;
 }
 
 /**
@@ -324,110 +313,110 @@ function osha_gallery_bulk_upload_form_submit($form, &$form_state)
  * 1. If multiples fields as gallery, pick one.
  * 2. Reorder the files of the field.
  */
-function osha_gallery_reorder_files_form($form, &$form_state, $node)
-{
-    $usable_fields = osha_gallery_get_usable_bundle_fields();
-    $form = array();
-    $form['#nid'] = $node->nid;
+function osha_gallery_reorder_files_form($form, &$form_state, $node) {
+  $usable_fields = osha_gallery_get_usable_bundle_fields();
+  $form = array();
+  $form['#nid'] = $node->nid;
 
-    if (!empty($form_state['values']['reorder_field'])) {
-        // If comes from first step of the form.
-        $field_name = $form_state['values']['reorder_field'];
-    } elseif (count($usable_fields[$node->type]) == 1) {
-        // Skip the first step if only one field.
-        $field_name = current(array_keys($usable_fields[$node->type]));
-    } else {
-        $field_name = '';
+  if (!empty($form_state['values']['reorder_field'])) {
+    // If comes from first step of the form.
+    $field_name = $form_state['values']['reorder_field'];
+  }
+  elseif (count($usable_fields[$node->type]) == 1) {
+    // Skip the first step if only one field.
+    $field_name = current(array_keys($usable_fields[$node->type]));
+  }
+  else {
+    $field_name = '';
+  }
+  if (empty($field_name)) {
+    // First step.
+    $form['reorder_field'] = array(
+      '#title' => 'Reorder this field',
+      '#type' => 'select',
+      '#required' => TRUE,
+      '#options' => $usable_fields[$node->type],
+    );
+    $form['select'] = array(
+      '#type' => 'submit',
+      '#value' => 'Next',
+    );
+  }
+  else {
+    // Second step - reorder.
+    $form['#field_name'] = $field_name;
+    $form['help_text'] = array(
+      '#type' => 'item',
+      '#markup' => t('Please drag and drop to reorder the images and then press "Save".')
+    );
+    $form['help_text2'] = array(
+      '#type' => 'item',
+      '#markup' => t('The cover image of the gallery it\'s the first image. You can use the "Make first" link to move the image on the first position and than press "Save" to save your ordering')
+    );
+    $info = field_info_instance('node', $field_name, $node->type);
+    $wrapper = entity_metadata_wrapper('node', $node);
+    $files = $wrapper->{$field_name}->value();
+    $form['fids'] = array(
+      '#type' => 'container',
+      '#attributes' => array(
+        'id' => 'osha_gallery_files_sort_container',
+      ),
+      '#tree' => TRUE,
+    );
+
+    // Render files thumbnails in sort
+    foreach ($files as $file) {
+      $thumb = _osha_gallery_get_display_settings_field($file, $info, $node);
+      $form['fids'][] = array(
+        '#type' => 'hidden',
+        '#value' => $file['fid'],
+        '#attributes' => array(
+          'name' => 'fids[]'
+        ),
+        '#prefix' => '<div class="osha-gallery-reorder-field">' . drupal_render($thumb),
+        '#suffix' => '</div>',
+      );
     }
-    if (empty($field_name)) {
-        // First step.
-        $form['reorder_field'] = array(
-            '#title' => 'Reorder this field',
-            '#type' => 'select',
-            '#required' => TRUE,
-            '#options' => $usable_fields[$node->type],
-        );
-        $form['select'] = array(
-            '#type' => 'submit',
-            '#value' => 'Next',
-        );
-    } else {
-        // Second step - reorder.
-        $form['#field_name'] = $field_name;
-        $form['help_text'] = array(
-            '#type' => 'item',
-            '#markup' => t('Please drag and drop to reorder the images and then press "Save".')
-        );
-        $form['help_text2'] = array(
-            '#type' => 'item',
-            '#markup' => t('The cover image of the gallery it\'s the first image. You can use the "Make first" link to move the image on the first position and than press "Save" to save your ordering')
-        );
-        $info = field_info_instance('node', $field_name, $node->type);
-        $wrapper = entity_metadata_wrapper('node', $node);
-        $files = $wrapper->{$field_name}->value();
-        $form['fids'] = array(
-            '#type' => 'container',
-            '#attributes' => array(
-                'id' => 'osha_gallery_files_sort_container',
-            ),
-            '#tree' => TRUE,
-        );
-
-        // Render files thumbnails in sort
-        foreach ($files as $file) {
-            $thumb = _osha_gallery_get_display_settings_field($file, $info, $node);
-            $form['fids'][] = array(
-                '#type' => 'hidden',
-                '#value' => $file['fid'],
-                '#attributes' => array(
-                    'name' => 'fids[]'
-                ),
-                '#prefix' => '<div class="osha-gallery-reorder-field">' . drupal_render($thumb),
-                '#suffix' => '</div>',
-            );
-        }
-        $path = drupal_get_path('module', 'osha_gallery');
-        $form['#attached']['library'][] = array('system', 'ui.sortable');
-        $form['#attached']['js'][$path . '/js/osha_gallery_reorder.js'] = array('type' => 'file');
-        $form['#attached']['css'][$path . '/css/osha_gallery_reorder.css'] = array('type' => 'file');
+    $path = drupal_get_path('module', 'osha_gallery');
+    $form['#attached']['library'][] = array('system', 'ui.sortable');
+    $form['#attached']['js'][$path . '/js/osha_gallery_reorder.js'] = array('type' => 'file');
+    $form['#attached']['css'][$path . '/css/osha_gallery_reorder.css'] = array('type' => 'file');
 
 
-        $form['save'] = array(
-            '#type' => 'submit',
-            '#value' => 'Save',
-            '#submit' => array('osha_gallery_reorder_files_form_reorder_submit'),
-            '#validate' => array('osha_gallery_reorder_files_form_reorder_validate'),
-        );
-    }
-    return $form;
+    $form['save'] = array(
+      '#type' => 'submit',
+      '#value' => 'Save',
+      '#submit' => array('osha_gallery_reorder_files_form_reorder_submit'),
+      '#validate' => array('osha_gallery_reorder_files_form_reorder_validate'),
+    );
+  }
+  return $form;
 }
 
 /**
  *
  */
-function osha_gallery_reorder_files_form_submit($form, &$form_state)
-{
-    // Just rebuild to go to step 2.
-    $form_state['rebuild'] = TRUE;
+function osha_gallery_reorder_files_form_submit($form, &$form_state) {
+  // Just rebuild to go to step 2.
+  $form_state['rebuild'] = TRUE;
 }
 
 /**
  * Validation of the reordering form.
  */
-function osha_gallery_reorder_files_form_reorder_validate($form, &$form_state)
-{
-    $node = node_load($form['#nid']);
-    $field_name = $form['#field_name'];
-    $wrapper = entity_metadata_wrapper('node', $node);
-    $files = $wrapper->{$field_name}->value();
-    $reordered_files = $form_state['input']['fids'];
-    // Images might have been changed since the user opened the form.
-    foreach ($files as $file) {
-        if (!in_array($file['fid'], $reordered_files)) {
-            form_set_error('submit', 'Images have changed since you opened this form');
-            break;
-        }
+function osha_gallery_reorder_files_form_reorder_validate($form, &$form_state) {
+  $node = node_load($form['#nid']);
+  $field_name = $form['#field_name'];
+  $wrapper = entity_metadata_wrapper('node', $node);
+  $files = $wrapper->{$field_name}->value();
+  $reordered_files = $form_state['input']['fids'];
+  // Images might have been changed since the user opened the form.
+  foreach ($files as $file) {
+    if (!in_array($file['fid'], $reordered_files)) {
+      form_set_error('submit', 'Images have changed since you opened this form');
+      break;
     }
+  }
 }
 
 /**
@@ -436,72 +425,74 @@ function osha_gallery_reorder_files_form_reorder_validate($form, &$form_state)
  * Add an anchor on the edit form of the node.
  * @see manualcrop_field_widget_form_alter
  */
-function osha_gallery_field_widget_form_alter(&$element, &$form_state, $context)
-{
-    if (module_exists('manualcrop') && user_access('use manualcrop')) {
-        $widget = $context['instance']['widget'];
-        if (manualcrop_supported_widgets($widget['type'])) {
-            if (!empty($widget['settings']['manualcrop_enable'])) {
-                foreach (element_children($element) as $key) {
-                    $element[$key]['osha_gallery_edit_anchor'] = array(
-                        '#type' => 'item',
-                        '#markup' => '<span id="' . $element[$key]['#field_name'] . '-' . $element[$key]['#default_value']['fid'] . '"></span>',
-                        '#weight' => -1,
-                    );
-                }
-            }
+function osha_gallery_field_widget_form_alter(&$element, &$form_state, $context) {
+  if (module_exists('manualcrop') && user_access('use manualcrop')) {
+    $widget = $context['instance']['widget'];
+    if (manualcrop_supported_widgets($widget['type'])) {
+      if (!empty($widget['settings']['manualcrop_enable'])) {
+        foreach (element_children($element) as $key) {
+          $element[$key]['osha_gallery_edit_anchor'] = array(
+            '#type' => 'item',
+            '#markup' => '<span id="' . $element[$key]['#field_name'] . '-' . $element[$key]['#default_value']['fid'] . '"></span>',
+            '#weight' => -1,
+          );
         }
+      }
     }
+  }
 }
 
 /**
  * Callback for the reorder step 2 form.
  */
-function osha_gallery_reorder_files_form_reorder_submit($form, &$form_state)
-{
-    $node = node_load($form['#nid']);
-    $field_name = $form['#field_name'];
-    $wrapper = entity_metadata_wrapper('node', $node);
-    $files = $wrapper->{$field_name}->value();
-    $reordered_files = array();
-    $reordered_fids = array_keys(array_flip($form_state['input']['fids']));
-    foreach ($files as $file) {
-        $delta = array_search($file['fid'], $reordered_fids);
-        $reordered_files[$delta] = $file;
-    }
-    ksort($reordered_files);
-    $wrapper->{$field_name}->set($reordered_files);
-    $wrapper->save();
-    drupal_set_message('The images have been reordered.');
-    $form_state['redirect'] = 'node/' . $node->nid;
+function osha_gallery_reorder_files_form_reorder_submit($form, &$form_state) {
+  $node = node_load($form['#nid']);
+  $field_name = $form['#field_name'];
+  $wrapper = entity_metadata_wrapper('node', $node);
+  $files = $wrapper->{$field_name}->value();
+  $reordered_files = array();
+  $reordered_fids = array_keys(array_flip($form_state['input']['fids']));
+  foreach ($files as $file) {
+    $delta = array_search($file['fid'], $reordered_fids);
+    $reordered_files[$delta] = $file;
+  }
+  ksort($reordered_files);
+  $wrapper->{$field_name}->set($reordered_files);
+  $wrapper->save();
+  drupal_set_message('The images have been reordered.');
+  $form_state['redirect'] = 'node/' . $node->nid;
 }
 
-function _osha_gallery_get_display_settings_field($file, $field_instance, $node)
-{
-    // @TODO handle other types of files and settings.
-    $html = array();
-    if (!empty($field_instance['widget']['settings']['preview_image_style'])) {
-        $img_style = $field_instance['widget']['settings']['preview_image_style'];
-        $html['image'] = array(
-            '#type' => 'item',
-            '#theme' => 'image',
-            '#path' => image_style_url($img_style, $file['uri']),
-        );
-        $html['edit_link'] = array(
-            '#type' => 'markup',
-            '#markup' => l(t('Edit'), 'node/' . $node->nid . '/edit', array(
-                'fragment' => $field_instance['field_name'] . '-' . $file['fid'],
-                'attributes' => array('class' => array('osha-gallery-action-link')),
-            )),
-        );
-        $html['make_first'] = array(
-            '#theme' => 'html_tag',
-            '#tag' => 'span',
-            '#value' => t('Make first'),
-            '#attributes' => array('class' => array('osha-gallery-make-first-button', 'osha-gallery-action-link')),
-        );
-    }
-    return $html;
+function _osha_gallery_get_display_settings_field($file, $field_instance, $node) {
+  // @TODO handle other types of files and settings.
+  $html = array();
+  if (!empty($field_instance['widget']['settings']['preview_image_style'])) {
+    $img_style = $field_instance['widget']['settings']['preview_image_style'];
+    $html['image'] = array(
+      '#type' => 'item',
+      '#theme' => 'image',
+      '#path' => image_style_url($img_style, $file['uri']),
+    );
+    $html['edit_link'] = array(
+      '#type' => 'markup',
+      '#markup' => l(t('Edit'), 'node/' . $node->nid . '/edit', array(
+        'fragment' => $field_instance['field_name'] . '-' . $file['fid'],
+        'attributes' => array('class' => array('osha-gallery-action-link')),
+      )),
+    );
+    $html['make_first'] = array(
+      '#theme' => 'html_tag',
+      '#tag' => 'span',
+      '#value' => t('Make first'),
+      '#attributes' => array(
+        'class' => array(
+          'osha-gallery-make-first-button',
+          'osha-gallery-action-link'
+        )
+      ),
+    );
+  }
+  return $html;
 }
 
 
@@ -509,109 +500,109 @@ function _osha_gallery_get_display_settings_field($file, $field_instance, $node)
  * Implements hook_form_FORM_ID_alter
  * to alter the content-type display form
  */
-function osha_gallery_form_field_ui_display_overview_form_alter(&$form, &$form_state)
-{
-    $field_name = "gallery_cover_image";
-    if(!isset($form['fields'][$field_name]))
-        return;
-    // Retrieve fivestar widgets
-    $widgets = module_invoke_all('fivestar_widgets');
+function osha_gallery_form_field_ui_display_overview_form_alter(&$form, &$form_state) {
+  $field_name = "gallery_cover_image";
+  if (!isset($form['fields'][$field_name])) {
+    return;
+  }
+  // Retrieve fivestar widgets
+  $widgets = module_invoke_all('fivestar_widgets');
 
-    // Get current settings for this entity/bundle
-    // (@see form_submit : I store additional settings
-    // into this variable to avoid create another variable
-    // in variable table)
-    $settings = field_bundle_settings($form['#entity_type'], $form['#bundle']);
-    // Retrieve current view-mode
-    $view_mode = $form['#view_mode'];
-
-
-    // Get current format (hidden or visible, to
-    // show settings form when needed only)
-    $format_type = isset($form_state['values'],
-        $form_state['values']['fields'],
-        $form_state['values']['fields'][$field_name],
-        $form_state['values']['fields'][$field_name]['type'])
-        ? $form_state['values']['fields'][$field_name]['type']
-        : $form['fields'][$field_name]['format']['type']['#default_value'];
-
-    // Build the settings form. Here, the "settings_edit"
-    // is the crucial key to use. You must start with
-    // it and build other settings fields into.
-    if ($format_type == 'visible') {
-        $image_styles = image_style_options(FALSE, PASS_THROUGH);
-        $sent_instance = [];
-        if (isset($settings['extra_fields']['display'][$field_name][$view_mode]['settings'])) {
-
-            $sent_instance['display'][$view_mode]['settings'] = $settings['extra_fields']['display'][$field_name][$view_mode]['settings'];
-        } else {
-            $sent_instance['display'][$view_mode]['settings'] = ['image_style' => 'original'];
-        }
-        // junk data because function wants ref to variable
-        $sent_form_status = [];
-
-        // Error avoiding
-        $sent_instance['display'][$view_mode]['settings']['image_link'] = 'none';
-
-        $form['fields'][$field_name]['settings_edit'] = image_field_formatter_settings_form('', $sent_instance, $view_mode, null, $sent_form_status);
-
-        // We don't want image link setting
-        unset($form['fields'][$field_name]['settings_edit']['image_link']);
-
-        $form['fields'][$field_name]['settings_summary']['#markup'] = image_field_formatter_settings_summary('', $sent_instance, $view_mode);
+  // Get current settings for this entity/bundle
+  // (@see form_submit : I store additional settings
+  // into this variable to avoid create another variable
+  // in variable table)
+  $settings = field_bundle_settings($form['#entity_type'], $form['#bundle']);
+  // Retrieve current view-mode
+  $view_mode = $form['#view_mode'];
 
 
+  // Get current format (hidden or visible, to
+  // show settings form when needed only)
+  $format_type = isset($form_state['values'],
+    $form_state['values']['fields'],
+    $form_state['values']['fields'][$field_name],
+    $form_state['values']['fields'][$field_name]['type'])
+    ? $form_state['values']['fields'][$field_name]['type']
+    : $form['fields'][$field_name]['format']['type']['#default_value'];
+
+  // Build the settings form. Here, the "settings_edit"
+  // is the crucial key to use. You must start with
+  // it and build other settings fields into.
+  if ($format_type == 'visible') {
+    $image_styles = image_style_options(FALSE, PASS_THROUGH);
+    $sent_instance = [];
+    if (isset($settings['extra_fields']['display'][$field_name][$view_mode]['settings'])) {
+
+      $sent_instance['display'][$view_mode]['settings'] = $settings['extra_fields']['display'][$field_name][$view_mode]['settings'];
     }
+    else {
+      $sent_instance['display'][$view_mode]['settings'] = ['image_style' => 'original'];
+    }
+    // junk data because function wants ref to variable
+    $sent_form_status = [];
 
-    // Don't forget to add a submit handler if you need to process/save
-    // configuration for your fields.
-    $form['#submit'][] = 'osha_gallery_form_field_ui_display_overview_form_submit';
+    // Error avoiding
+    $sent_instance['display'][$view_mode]['settings']['image_link'] = 'none';
+
+    $form['fields'][$field_name]['settings_edit'] = image_field_formatter_settings_form('', $sent_instance, $view_mode, NULL, $sent_form_status);
+
+    // We don't want image link setting
+    unset($form['fields'][$field_name]['settings_edit']['image_link']);
+
+    $form['fields'][$field_name]['settings_summary']['#markup'] = image_field_formatter_settings_summary('', $sent_instance, $view_mode);
+
+
+  }
+
+  // Don't forget to add a submit handler if you need to process/save
+  // configuration for your fields.
+  $form['#submit'][] = 'osha_gallery_form_field_ui_display_overview_form_submit';
 }
 
 /**
  * Custom submit callback to store
  * settings
  */
-function osha_gallery_form_field_ui_display_overview_form_submit($form, &$form_state)
-{
+function osha_gallery_form_field_ui_display_overview_form_submit($form, &$form_state) {
 
-    // Get current settings and view-mode
-    $settings = field_bundle_settings($form['#entity_type'], $form['#bundle']);
-    $view_mode = $form['#view_mode'];
-    $field_name = 'gallery_cover_image';
-    // current form values
+  // Get current settings and view-mode
+  $settings = field_bundle_settings($form['#entity_type'], $form['#bundle']);
+  $view_mode = $form['#view_mode'];
+  $field_name = 'gallery_cover_image';
+  // current form values
 
-    $osha_gallery_settings = isset($form_state['values'],
-        $form_state['values']['fields'],
-        $form_state['values']['fields'][$field_name],
-        $form_state['values']['fields'][$field_name]['settings_edit'])
-        ? $form_state['values']['fields'][$field_name]['settings_edit']
-        : array();
+  $osha_gallery_settings = isset($form_state['values'],
+    $form_state['values']['fields'],
+    $form_state['values']['fields'][$field_name],
+    $form_state['values']['fields'][$field_name]['settings_edit'])
+    ? $form_state['values']['fields'][$field_name]['settings_edit']
+    : array();
 
-    // Add current form values into the "settings" key
-    // of the current managed field
-    $settings['extra_fields']['display'][$field_name][$view_mode]['settings'] = $osha_gallery_settings;
+  // Add current form values into the "settings" key
+  // of the current managed field
+  $settings['extra_fields']['display'][$field_name][$view_mode]['settings'] = $osha_gallery_settings;
 
 
-    // If default view, update views which aren't custom
+  // If default view, update views which aren't custom
 
-    if ($view_mode == 'default') {
-        $entity_info = entity_get_info($form['#entity_type']);
-        $view_modes = $entity_info['view modes'];
-        $view_mode_settings = field_view_mode_settings($form['#entity_type'], $form['#bundle']);
+  if ($view_mode == 'default') {
+    $entity_info = entity_get_info($form['#entity_type']);
+    $view_modes = $entity_info['view modes'];
+    $view_mode_settings = field_view_mode_settings($form['#entity_type'], $form['#bundle']);
 
-        foreach ($view_modes as $view_mode_name => $view_mode_info) {
-            if (empty($view_mode_settings[$view_mode_name]['custom_settings'])) {
-                $settings['extra_fields']['display'][$field_name][$view_mode_name]['settings'] = $osha_gallery_settings;
-                $settings['extra_fields']['display'][$field_name][$view_mode_name]['weight'] = $form_state['values']['fields'][$field_name]['weight'];
-                $settings['extra_fields']['display'][$field_name][$view_mode_name]['visible'] = $form_state['values']['fields'][$field_name]['type']!='hidden';
-            }
-        }
+    foreach ($view_modes as $view_mode_name => $view_mode_info) {
+      if (empty($view_mode_settings[$view_mode_name]['custom_settings'])) {
+        $settings['extra_fields']['display'][$field_name][$view_mode_name]['settings'] = $osha_gallery_settings;
+        $settings['extra_fields']['display'][$field_name][$view_mode_name]['weight'] = $form_state['values']['fields'][$field_name]['weight'];
+        $settings['extra_fields']['display'][$field_name][$view_mode_name]['visible'] = $form_state['values']['fields'][$field_name]['type'] != 'hidden';
+      }
     }
+  }
 
-    // Finally, recall field_bundle_settings
-    // with settings as last param to save it
-    // into the database.
-    $settings = field_bundle_settings($form['#entity_type'], $form['#bundle'], $settings);
+  // Finally, recall field_bundle_settings
+  // with settings as last param to save it
+  // into the database.
+  $settings = field_bundle_settings($form['#entity_type'], $form['#bundle'], $settings);
 
 }
