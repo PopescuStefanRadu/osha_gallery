@@ -6,6 +6,7 @@ Features
 - Reorder images from the node view page
 - Bulk upload for image fields with unlimited number of values from the node view page
 - Adds two tabs ("Reorder images", "Bulk Upload") for the above features
+- Creates a cover image display field from your images which opens the gallery in a colorbox
 
 
 Dependencies
